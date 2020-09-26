@@ -1,8 +1,7 @@
 ---
 title: 你到底是如何上网的
-tags:
-  - Web
-categories: 学习笔记
+tags: [计算机网络]
+categories: 技术随笔
 date: 2017-01-23 19:07:51
 ---
 

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yriuns.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="当你在浏览器中键入网址(不妨假设为www.example.com，这个网站非常简单，只有一个HTML文件)并按下回车，就能看到渲染出来的网页。但是，这一过程中具体发生了什么呢？ 这个问题困扰了笔者多年，虽然知道数据终将转为01比特流，但却一直没想通具体是怎么传输的……终于今年学了计算机网络原理，虽然没好好听课，而且网上看到的文章感觉写的还不够全面，于是试图自己把这个事讲明白。 本文力图以上面所说的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="你到底是如何上网的">
+<meta property="og:url" content="https://yriuns.github.io/2017/01/23/http-procedure/index.html">
+<meta property="og:site_name" content="Yriuns&#39; Blog">
+<meta property="og:description" content="当你在浏览器中键入网址(不妨假设为www.example.com，这个网站非常简单，只有一个HTML文件)并按下回车，就能看到渲染出来的网页。但是，这一过程中具体发生了什么呢？ 这个问题困扰了笔者多年，虽然知道数据终将转为01比特流，但却一直没想通具体是怎么传输的……终于今年学了计算机网络原理，虽然没好好听课，而且网上看到的文章感觉写的还不够全面，于是试图自己把这个事讲明白。 本文力图以上面所说的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/square.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/fourier.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/fourier2.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/baseband_transmission.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/shift_keying.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/Ethernet.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/switch.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/router.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/UDP.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/TCP.png">
+<meta property="og:image" content="https://yriuns.github.io/images/http-procedure/http_request.png">
+<meta property="article:published_time" content="2017-01-23T11:07:51.000Z">
+<meta property="article:modified_time" content="2020-11-15T06:10:30.328Z">
+<meta property="article:author" content="Yriuns">
+<meta property="article:tag" content="计算机网络">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://yriuns.github.io/images/http-procedure/square.png">
+
+<link rel="canonical" href="https://yriuns.github.io/2017/01/23/http-procedure/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>你到底是如何上网的 | Yriuns' Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Yriuns' Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">来都来了，收藏一下吧</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://yriuns.github.io/2017/01/23/http-procedure/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Yriuns">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Yriuns' Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          你到底是如何上网的
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-01-23 19:07:51" itemprop="dateCreated datePublished" datetime="2017-01-23T19:07:51+08:00">2017-01-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-11-15 14:10:30" itemprop="dateModified" datetime="2020-11-15T14:10:30+08:00">2020-11-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF%E9%9A%8F%E7%AC%94/" itemprop="url" rel="index"><span itemprop="name">技术随笔</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>当你在浏览器中键入网址(不妨假设为<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>，这个网站非常简单，只有一个HTML文件)并按下回车，就能看到渲染出来的网页。但是，这一过程中具体发生了什么呢？</p>
+<p>这个问题困扰了笔者多年，虽然知道数据终将转为01比特流，但却一直没想通具体是怎么传输的……终于今年学了计算机网络原理，<del>虽然没好好听课，</del>而且网上看到的文章感觉写的还不够全面，于是试图自己把这个事讲明白。</p>
+<p>本文力图以上面所说的例子，按照TCP/IP参考模型来对该过程进行分析。</p>
+<span id="more"></span>
+
+<hr>
+<h1 id="TCP-IP简介"><a href="#TCP-IP简介" class="headerlink" title="TCP/IP简介"></a>TCP/IP简介</h1><p>首先简单的介绍一下TCP/IP参考模型。<del>众所周知，</del> 它是一个分层模型，同层之间通过“协议”来约定数据包的格式，上层通过“接口”来使用下层提供的“服务”进行运作。</p>
+<p>举个例子。A公司从上到下有三层：老板、秘书、员工，B公司也是如此。且老板会中文和英文，秘书会英文和日语，员工会日语和韩语。然后呢一天A老板有一份中文文件要给B老板，但是老板毕竟不能亲自跑一趟，于是他把文件给了A秘书。但是A秘书不认识B老板，只知道B秘书的办公室在哪。于是A秘书又用日语告诉A员工把文件送到B秘书的办公室。那A员工又不是B公司的人，肯定不能直接到办公室找人，于是A员工只是跑到B公司然后把文件给了B员工。接着B员工转给了B秘书，B秘书终于把文件给了B老板。</p>
+<p>在这个例子里，中文文件就相当于两个老板之间交流沟通的“协议”，上级给下级布置任务的各种语言就是“接口”，下级能完成的任务就是“服务”。</p>
+<p><strong>还有一点比较重要的是：</strong><br>真正的累活是员工A和B完成的，其他人只要布置任务就行了。</p>
+<p>具体到TCP/IP协议呢，它分为4层：</p>
+<ul>
+<li>应用层(Application Layer)，对应于OSI七层模型中的会话层、表现层、应用层。这一层是用户具体能感知到的一层，比如浏览器啦、游戏客户端啊什么的。</li>
+<li>传输层(Transport Layer)，对应于OSI中的传输层。这一层为应用层提供面向连接的服务TCP协议，和无连接的服务UDP协议。</li>
+<li>网络层(Internet Layer)，对应于OSI中的网络层(Network Layer)。解决的问题是如何把多条链路结合为网络，从而使并不直接相连的两台机器之间也能发送消息。</li>
+<li>主机-网络层(Host-to-network Layer)，对应于OSI中的数据链路层(Data Link Layer)与物理层(Physical Layer)。</li>
+<li>数据链路层关注的是如何在两台直接相连的终端上发送消息。</li>
+<li>物理层的功能是在物理线路上传输二进制比特流。</li>
+</ul>
+<p>为了方便，本文采用5层模型，即：应用层、传输层、网络层、数据链路层、物理层。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>为了方便，称客户端为A，服务端为B。<br>总体上，大致可分为如下步骤：</p>
+<ul>
+<li>接入网络。为了完整性，我将这一步也列在这里。毕竟是所有步骤的前提，而且这一步也不简单。</li>
+<li>域名解析，得到<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>的ip地址。</li>
+<li>浏览器(应用层)通过传输层提供的服务建立起连接(TCP三次握手)。</li>
+<li>传输层将应用层的数据加上协议头以“数据段”为单位发给网络层。</li>
+<li>网络层将传输层的一个“数据段”包装为一组或多组(取决于数据长度)，每一组都加上协议头，变为多个“数据包”，通过数据链路层进行分组转发(每个分组可能具有完全不同的转发路径)，比如某个分组的路径是：A-&gt;路由器0-&gt;路由器a1-&gt;…-&gt;路由器an-&gt;B；而另一个分组则是：A-&gt;路由器0-&gt;路由器b1-&gt;…-&gt;路由器bm-&gt;B。</li>
+<li>数据链路层网络层的包加上帧头帧尾，组成“数据帧”，以帧为单位通过物理层传输。</li>
+<li>数据帧经过物理线路的传输，到达了服务端的物理层，接下来物理层传给数据链路层，数据链路层去掉帧头帧尾后又传给网络层。网络层将所有分组收集完毕后，分别去掉协议头然后重组为数据段传给传输层。传输层去掉协议头传给浏览器。</li>
+<li>浏览器向服务器发起HTTP请求。</li>
+<li>服务器响应HTTP请求，将HTML返回。</li>
+<li>浏览器得到HTML。</li>
+<li>TCP四次挥手关闭连接。</li>
+</ul>
+<p>接下来就进行详细的介绍。考虑到理解方便，我们将以自底向上的顺序先介绍各个层，再介绍上面的例子。因此本文的顺序是这样的：</p>
+<ul>
+<li><a href="#Physical">物理层</a></li>
+<li><a href="#Datalink">数据链路层</a></li>
+<li><a href="#MAC">介质访问控制子层</a></li>
+<li><a href="#Internet">网络层</a></li>
+</ul>
+<p>然后是传输层与HTTP请求的介绍：</p>
+<ul>
+<li><a href="#Transport">传输层</a></li>
+<li><a href="#DNS">域名解析</a></li>
+<li><a href="#TCP_connect">TCP连接</a></li>
+<li><a href="#HTTP">HTTP请求与响应</a></li>
+<li><a href="#TCP_close">TCP连接关闭</a></li>
+</ul>
+<p><strong>不想看层模型介绍的同学可以直接<a href="#anchor">点这里</a>。</strong></p>
+<h1 id="物理层"><a href="#物理层" class="headerlink" title="物理层"></a><a name="Physical"/>物理层</h1><p>物理层是数据传输的基础。</p>
+<h2 id="数据通信原理"><a href="#数据通信原理" class="headerlink" title="数据通信原理"></a>数据通信原理</h2><p>假设我们要发送一个ASCII字符<code>b</code>，首先我们将其转为8比特长的字节，也就是<code>01100010</code>，接着我们输出了<code>LHHLLLHL</code>的电信号(0对应<code>L</code>，代表低电平，1对应<code>H</code>，代表高电平)。也就是下面这个方波。</p>
+<p> <img src="/images/http-procedure/square.png" alt="方波"></p>
+<p>这时候，第一个问题出现了：由于物理原因，线路存在截止频率f，会导致波形失真。形象的说就是方波不方了。</p>
+<p>那么，具体是怎么影响的呢，我们方方正正的波形传播之后会变成啥样嘞？傅里叶告诉我们，任何一个周期为T的函数都可以表示为正弦函数和余弦函数组成的无穷级数。我们把刚刚的方波看成一个以T为周期的周期函数的一部分，然后做一个傅里叶变换(取前8项)。大概长这个样子：</p>
+<p><img src="/images/http-procedure/fourier.png" alt="傅里叶"></p>
+<p>还是可以认出来谁是0谁是1的，只要阈值取的好，可以很容易的还原成原来的方波。而截止频率则是说：存在一个截止频率，使得该频率以下的信号，振幅在传输过程中不会衰减；该频率以上的信号，其振幅会出现不同程度的减弱。考虑一个极端情况，截止频率为上图谐波3对应的频率，且大于截止频率的信号在传输过程中将被滤掉、振幅为0，即只剩下了谐波1和谐波2，然后信号变成了这个样子：</p>
+<p><img src="/images/http-procedure/fourier2.png" alt="傅里叶2"></p>
+<blockquote>
+<p>Quick Note<br>实际上，截止频率并不是尖锐的，振幅的略微衰减也是可以接受的。如果把能量(振幅的平方)衰减为原来的1/2时的频率记为f的话，我们(电气领域)称0Hz至f这一段频率的宽度称为带宽。而计算机领域一般把信道的最大传输速率(bits/s, bps)称作带宽。</p>
+</blockquote>
+<p>这就很尴尬了…第3个1只剩这么一点了。这就是截止频率的影响……本来棱角分明直的不行的方波就这么弯了。可见，截止频率越低，能够“存活”下来的谐波数就越少，叠加之后的波形也越不像原始的方波。按照刚才的假设，我们的方波周期为T，因此1/T为其频率，也是基频的频率，而能存活下来的谐波数满足 n*1/T&lt;f，也就是n&lt;fT。T可以通过比特率来算，如果比特率为b bits/s，那么发送8bits(1byte)需要的时间为8/b，同时这也是T的值。所以我们得到n&lt;f*8/b。对于一条普通电话线，它的截止频率大概为3000Hz，于是有n&lt;24000/b，也就是说，如果我们想让波形为前8项，那么比特率不能超过3000bits/s。如果我们要以9600bps的速率发送数据，那么传输的信号实际上长得和前2项差不多。</p>
+<blockquote>
+<p>Quick Note<br>实际上最大传输速率并不是由刚刚的不等式b&lt;8f/n决定的。因为我们没有考虑采样率，也没有考虑噪声等其他因素。一般用这俩定理：尼奎斯特定理&amp;香农定理来计算最大传输率。</p>
+</blockquote>
+<h2 id="数字调制"><a href="#数字调制" class="headerlink" title="数字调制"></a>数字调制</h2><h3 id="基带传输"><a href="#基带传输" class="headerlink" title="基带传输"></a>基带传输</h3><p>假设我们经过尝试，找到了一种合适的线材，也找到了合适的比特率。那么我们还将面临一个问题：电压信号是连续的，如果你在1s内发了6个0：<code>000000</code>，在我看来只不过是这1s内全是低电平而已，那我怎么知道你发的是6个0而不是5个0或者7个0呢……？</p>
+<p>解决这个问题有很多办法：</p>
+<ul>
+<li>约定一个采样频率。但这需要我们拥有一个很准很准的时钟，否则迟早会出现错位。</li>
+<li>改变信号发送的方式。机智的前人们想出了一个方法：信号从<code>L</code>到<code>H</code>的跳变代表0，信号从<code>H</code>到<code>L</code>的跳变表示1(例子见下图中的d)。因此<code>0000</code>就变为了<code>LHLHLHLH</code>，接收方很容易能将其还原为<code>0000</code>，而不再会纠结到底是几个0。这个方案叫做曼彻斯特编码。然而这种方案的缺点显而易见：传输同样的数据需要原来2倍的带宽。因此，还有一些其他的编码方式试图解决这100%带宽额外开销的问题，在此不作详述。</li>
+</ul>
+<p><img src="/images/http-procedure/baseband_transmission.png" alt="基带传输"></p>
+<h3 id="通带传输"><a href="#通带传输" class="headerlink" title="通带传输"></a>通带传输</h3><p>对于无线传输来说，通常不可能使用0<del>截止频率的频率段来发送信号(基带传输)，因为低频意味着波长长，意味着天线也将很大。于是，诞生了通带传输，简单地说就是将0</del>B Hz的信号搬到S~S+B Hz的频段上。</p>
+<p>频段变了，表示01的方式自然也要变(按原来傅里叶的方法来叠加显然是不对的……)。常见的有：(a) 幅移键控，即某个振幅表示0，另一个振幅表示1；(b) 频移键控，即某个频率表示0，另一个频率表示1；(c) 相移键控，即某个相位角表示0，另一个相位角表示1。详见下图：</p>
+<p><img src="/images/http-procedure/shift_keying.png" alt="通带"></p>
+<h1 id="数据链路层"><a href="#数据链路层" class="headerlink" title="数据链路层"></a><a name="Datalink"/>数据链路层</h1><p>解决了01比特的传输问题后，接下来要解决的是：如何在两台通过信道连接的机器之间传输完整的信息块(我们一般称为数据帧)？你可能会说：这不是很简单嘛，A把比特放上去，B把比特取下来呗。然而，B咋知道什么时候取下来呢……而且，线路是会出错的，也许由于某些外界刺激0变成了1，1变成了0，那我们如何知道到底出错了没？另外，信道的传输速率是有限的，信号的传播也是需要时间的。这些问题都是数据链路层需要解决的。</p>
+<h2 id="构造数据帧"><a href="#构造数据帧" class="headerlink" title="构造数据帧"></a>构造数据帧</h2><p>对于物理层来说，它能为数据链路层做的只是提供原始的比特流。那么，怎么判断一段比特流到底属于一条消息(帧)还是多条消息呢？如果是后者，该在哪些位置断开？常见的方法有：</p>
+<ul>
+<li>字节计数法：也就是利用头部的一个字段来标识该帧含有的字节数。帧结构大概长这样：<code>|字节数|字节1|字节2|...|字节n|</code></li>
+<li>标志字节法：即用约定好的特殊字节<code>FLAG</code>来标志帧的开始和结束。类似于这样：<code>|FLAG|数据域|FLAG|</code>。不过这样有一个问题……如果数据域里有<code>FLAG</code>怎么办？学过编程的应该都知道转义字符的存在，这里也是类似的，使用转义字节<code>ESC</code>来对数据域中的<code>FLAG</code>转义。那如果数据域中有<code>ESC</code>呢？……也用一个<code>ESC</code>转义就好了。现在它大概长这样：<code>|FLAG|XXXX|ESC|ESC|XXXX|ESC|FLAG|XXXX|FLAG|</code>，容易看出来实际上的数据是<code>|XXXX|ESC|FLAG|XXXX|</code>。</li>
+<li>比特填充法：该方法规定：以<code>01111110</code>作为帧的开始和结束，同时数据域中需要在连续的5个1后插入一个0。即如果你想发送<code>111111</code>，那么你将发送<code>|01111110|1111101|01111110|</code>。</li>
+</ul>
+<p>现代网络一般综合使用了这些方法。比如以太网采用了一个很长(8bytes)的标志字节作为帧的开始(称为前导码)，又在前导码后有一个长度字段(字节计数)来定位帧的结束。</p>
+<h2 id="差错控制"><a href="#差错控制" class="headerlink" title="差错控制"></a>差错控制</h2><p>前面说到，线路是会出错的。因此人们想出了不少办法来处理传输错误，不过它们基本可分为两种策略：</p>
+<ul>
+<li>纠错码。即在发送的数据块中加入足够的冗余信息，使得即使发生了传输错误，接收方也能恢复出正确的数据。有点类似二维码，把某些地方涂黑依然能扫出来。</li>
+<li>检错码。同样加入一些冗余信息，但接收方只能推断出是否发生了错误。</li>
+</ul>
+<p>对于有线信道，出错率很低，一般采用检错码。当错误发生时，只要重传就好了，毕竟只是偶尔出错。</p>
+<p>而对于无线信道，出错率可能比前者高了几个数量级，如果采用检错码，会导致频繁的重传，而且重传的数据依然很可能出错，又需要重传，给信道带来极大的负担。因此无线信道一般采用纠错码。</p>
+<h2 id="滑动窗口协议"><a href="#滑动窗口协议" class="headerlink" title="滑动窗口协议"></a>滑动窗口协议</h2><p>显然，对于出错率不可忽略的信道来说，数据帧的传输是需要接收方确认的，否则发送方无法知道此次传输是否成功。那么如何做好这件事呢？</p>
+<p>我们容易想到一个naive的想法：一帧一帧的发，接收方收到一个正确的帧，就返回一个确认(一般称为ACK，acknowledge)说：上个帧收到了，没问题，发下一个帧吧！然后接收方收到了这个ACK，就继续发送下一帧。万一，这个数据帧在半路丢了，发送方收不到ACK咋办？甚至说发送方都不知道这个帧丢了。我们可以弄一个计时器，比如1s，如果1s内没收到ACK，那发送方就认为数据帧丢了，重新发送这个帧。如果是ACK在半路丢了呢？那发送方同样收不到ACK，同样会进行重传，但是接收方已经收过这个帧了，它应该把这个帧丢弃，并且返回一个ACK。这就需要给数据帧一个序号，否则接收方并不知道这是一个重复的帧，还是两个内容一样的帧。</p>
+<p>这个协议就叫做<strong>1bit滑动窗口协议</strong>。</p>
+<p>不难发现，这个方法是极其低效的……不妨做这么一个计算：假设比特率为b，传播延迟为t，数据帧大小为d，那么这个方法的效率是</p>
+<p>$$ \eta = \frac{\frac{d}{b}}{\frac{d}{b}+2\times t} = \frac{d}{d+2bt} $$</p>
+<p>也就是说，比特率越高、传播延迟越大，效率越低，这显然不是人类希望的结果。于是，诞生了<strong>回退n帧协议</strong>。</p>
+<p>它的基本思想就是：发送方一次可以发送多个帧，但要根据计时器重传超时的帧(及其之后的帧)。接收方只接受序号正确的帧，也只对序号正确的帧返回ACK。</p>
+<p>具体来说呢，发送方开辟一个最大尺寸为n(不妨设为5)的窗口，记录着所有“已发送但未确认”的帧，并且为其中每个帧维护一个计时器。此外，窗口拥有下界和上界，分别是窗口中的帧序号的最小值与最大值。当某个帧超时，重传窗口内所有的帧，并且刷新计时器。当收到ACK时，如果ACK的值等于下界，就将下界+1(即从窗口中删掉第一帧)。另外，只要窗口尺寸不超过n，发送方都可以发送新的帧。</p>
+<p>接收方则简单的记录一个“下一个希望接收的帧序号k”即可。</p>
+<p>举个例子：发送方有7个帧(0123456)要发。初始阶段，发送方窗口为空，接收方k=0。接着发送方连续发了5个帧，发送方下界为0，上界为4。接收方收到了0和1，并且分别返回了两个ACK，发送方下界为2，接收方k=2。发送方又发了5和6，上界变为6。结果呢2号帧丢了，3和4没丢。那么由于k=2，收到的却是3和4，因此接收方不返回ACK。发送方的计时器超时后，重发了2、3、4、5、6帧。这回很顺利，5个帧都没丢，接收方分别返回了5个ACK，传输结束。</p>
+<p>实际上，该协议允许<strong>累计确认</strong>，也就是ACK=m代表0-m帧均接收成功。对于上面的例子，发送方可以只发送ACK=1，代表它收到了0和1。发送ACK=6，代表它收到了2、3、4、5、6。接收方的窗口更新机制变为：只要ACK落在下界和上界之间，就将下界设为ACK+1。</p>
+<p>这个协议有一个明显的缺点：一旦超时，需要重传的帧太多了。一个很自然的想法就是只重传需要重传的帧，于是又诞生了<strong>选择重传协议</strong>。不过在此不做介绍。</p>
+<h2 id="单工、半双工与全双工"><a href="#单工、半双工与全双工" class="headerlink" title="单工、半双工与全双工"></a>单工、半双工与全双工</h2><ul>
+<li>单工：信息只能单向传输，即A可以给B发数据但B不能给A发(不过B可以发送监视信号)。</li>
+<li>半双工：信息可以双向传输，但在某一时刻只能单向传输，类似于对讲机。</li>
+<li>全双工：信息可以同时双向传输，类似于电话，两个人可以同时说话(虽然那样会听不清)。</li>
+</ul>
+<h1 id="介质访问控制子层"><a href="#介质访问控制子层" class="headerlink" title="介质访问控制子层"></a><a name="MAC"/>介质访问控制子层</h1><p>了解了两方参与的协议之后，我们来看看多方协调的协议，也就是确定“多个用户使用同一个信道时，某一时刻轮到谁”的问题。该层称为介质访问控制子层(Medium Access Control Sublayer, MAC)，属于数据链路层的一部分，位于它的底部。</p>
+<p>不管是无线网络还是有线网络，都存在信道干扰的问题。对于前者，工作在同一个频段的不同WiFi，或是连接到同一个WiFi的不同设备，它们之间都存在着信道干扰。对于后者，单根电缆或者光纤连接着多个节点，也存在着信道干扰。因此，如何分配信道使得各个用户都能正常使用成了一个必须解决的问题。</p>
+<h2 id="以太网"><a href="#以太网" class="headerlink" title="以太网"></a>以太网</h2><p>首先来看看有线网络是如何处理的。以太网可能是如今最普遍的计算机网络了。它的帧格式长这样：</p>
+<p><img src="/images/http-procedure/Ethernet.png" alt="Ethernet"></p>
+<p>其中(a)是以太网帧，(b)是IEEE 802.3的帧。不过它俩几乎一样，所以大家经常把它俩当做一个东西。</p>
+<p>首先是8个字节的前导码，接着是6个字节的目的地址和6个字节的源地址，这俩地址也就是我们经常听说的MAC地址。接着是2个字节的类型/长度字段。然后是最长为1500字节的数据域。然后是填充字段，它是当数据域部分太短(小于46字节)时，用来填充该帧的，使其达到<a href="#min_len">最小长度要求</a>。最后是校验和，提供检错功能，即如果接收方检测到一个错误就丢弃该帧。</p>
+<p>曾经，以太网采用的方案是：CSMA/CD算法。简单来说就是采用半双工方式，发送方会监听介质(电缆)，一旦介质变为空闲就开始发送。如果在发送的过程中检测到冲突，立即停止传输，并发出一个警告信号通知其他机器有冲突发生，所有机器都等待一段时间后重发。这个等待时间由二进制指数后退来决定，也就是：第一次冲突后，每个站随机等待0个或1个时间槽。第二次冲突后，每个站随机选择0、1、2、3个时间槽，以此类推。当然还有一个最大的选择区间，为1023。这也被称为经典以太网。</p>
+<p>后来，人们发明了交换机。它的结构大概是这样：</p>
+<p><img src="/images/http-procedure/switch.png" alt="switch"></p>
+<p>其中电缆(图中的line)是全双工的，接在交换机的端口(port)上，交换机只用把帧从入端口输送到帧想去的对应的出端口就行了。这么一改不得了了，没冲突了啊：由于电缆是全双工的，所以机器和端口之间可以同时收发数据，不存在冲突；如果出现两个帧都想走同一个输出端口的情况，交换机只要设一个缓存，逐帧发送即可，也不存在冲突。</p>
+<p><strong>非常重要的一点是：</strong><br>由于有线电缆出错率低，因此<strong>以太网不使用确认机制。即只要没有冲突发生，发送方就认为发送成功。</strong> 如果确实有错误发生，那么由<a href="#ethernet_error">高层负责处理</a>。而且，下面要说的无线局域网也不采用确认机制。也就是说：如今，确认机制/滑动窗口协议并不在数据链路层使用，而是在高层(传输层)使用。</p>
+<h2 id="无线局域网"><a href="#无线局域网" class="headerlink" title="无线局域网"></a>无线局域网</h2><p>无线局域网主要采用IEEE 802.11标准(然而内含802.11a、802.11b、802.11g等不同方案……)。与有线网络不同，无线网天生存在劣势：不同设备发出的电磁波在空间中会互相叠加互相干扰。那么，如何解决呢？</p>
+<h3 id="801-11b"><a href="#801-11b" class="headerlink" title="801.11b"></a>801.11b</h3><p>虽然801.11a小组先成立，但是801.11b标准先获得了批准，因此我们先来看看801.11b。它基于码分复用多址(Code Division Multiple Access，CDMA)。它采用了一些数学技巧使得用户可以同时发送数据。在前面的物理层部分我们提到，曼彻斯特编码用10表示1，01表示0。CDMA则不一样，每台机器对于0和1的表示互不相同。举个例子，A使用<code>A=(-1 -1 -1 +1 +1 -1 +1 +1)</code>来表示1，用它的反码<code>-A=(+1 +1 +1 -1 -1 +1 -1 -1)</code>来表示0。B使用<code>B=(-1 -1 +1 -1 +1 +1 +1 -1)</code>来表示1，<code>-B=(+1 +1 -1 +1 -1 -1 -1 +1)</code>来表示0。C使用<code>C=(-1 +1 -1 +1 +1 +1 -1 -1)</code>来表示1，<code>-C=(+1 -1 +1 -1 -1 -1 +1 +1)</code>来表示0，这些数字序列被称为<strong>码片</strong>。接着来看看它们同时传播会怎么样，比如A想发送<code>xx11</code>，B想发送<code>x100</code>，C想发送<code>11x1</code>。x代表不发送。对于第一位只存在C的信号，总信号为<br><code>S1 = C = (-1 +1 -1 +1 +1 +1 -1 -1)</code><br>对于第二位，B和C的信号在空间中叠加，总信号为<br><code>S2 = B + C = (-2 0 0 0 +2 +2 0 -2)</code><br>第三位<br><code>S3 = A + (-B) = (0 0 -2 +2 0 -2 0 +2)</code><br>第四位<br><code>S4 = A + (-B) + C = (-1 +1 -3 +3 +1 -1 -1 +1)</code><br>接下来就是见证数学神奇的时刻。细心的读者可能会发现，如果把ABC看做向量，那么它们是两两正交的<br><code>A · B = A · C = B · C = 0</code><br>拥有这个性质之后，对于接收方，它只要把发送方的码片与总信号做一个内积即可。比如想接收C的信号：<br><code>S1 · C = 1</code>，<code>S2 · C = 1</code>，<code>S3 · C = 0</code>，<code>S4 · C = 1</code>。( ⊙ o ⊙ )啊！我们得到了<code>1101</code>，也就是<code>11x1</code>(结果中的1表示比特1，0表示空，-1表示比特0)。</p>
+<p>当然，为了方便说明原理，这个例子做了一个假设：各个机器的输出是同步的。</p>
+<h3 id="801-11a"><a href="#801-11a" class="headerlink" title="801.11a"></a>801.11a</h3><p>801.11a基于正交频分复用(Orthogonal Frequency Division Multiplexing, OFDM)。主要思想是：。另外801.11a工作在5GHz频段，干扰较少。</p>
+<h3 id="801-11g"><a href="#801-11g" class="headerlink" title="801.11g"></a>801.11g</h3><p>801.11g同样基于OFDM，只不过工作在2.4GHz频段。带来的好处是保持了802.11a的高速率并且兼容802.11b的工作频段。</p>
+<!-- 我们依然从naive的想法开始探索。不难想到这些解决方案：
+
+* 频分复用。也就是把频谱分为多个频段，每个频段就是一个信道，用户各自使用其中的一个即可。
+* 时分复用。在这种方式下，用户轮流占有信道。也就是将信道分为多个时间槽。不过这样会带来一个问题：用户的输出流需要同步。所以一般会在槽与槽之间增加一小段“保护时间”，来适应时钟的微小变化。 -->
+
+<h1 id="网络层"><a href="#网络层" class="headerlink" title="网络层"></a><a name="Internet"/>网络层</h1><p>经过之前的努力，我们已经能做到：将帧从线路的一边传送到另一边。现在我们有了一个更宏大的目标：从网络的一端传送到另一端。</p>
+<blockquote>
+<p>Quick Note  </p>
+</blockquote>
+<ul>
+<li>点到点与端到端：点到点指的是直接相连的两台主机(比如A-B)之间的数据传输；端到端则是指逻辑上相连(物理上不相连，比如A-B-C中的A与C)的两台主机之间的数据传输。或者说端到端连接是由多个点到点连接拼接而成的。  </li>
+<li>我们把一个数据包从发送方到接收方经过的每一个路由器称为“跳”。</li>
+</ul>
+<p>但是，此前我们传输数据依赖的标识是MAC地址，而MAC地址是和硬件绑定的，和网络无关。我们最好有一个与网络拓扑相关的标识，这样方便路由，这个标识也就是我们熟知的IP地址。</p>
+<p>那么，IP地址具体是怎么使用的呢？或者说，任给两个IP地址，如何使它俩之间能够互相传输数据？在解答这个问题之前，需要先介绍一些背景知识。</p>
+<h2 id="数据报"><a href="#数据报" class="headerlink" title="数据报"></a>数据报</h2><p>这应该是整个Internet的基石了。数据报的意思是：如果A想给B发数据，不需要提前找到由A到B的路径，也不需要提前打招呼，而是直接向网络中发送数据包，由网络中的路由器为其逐跳转发，因此每一个数据包经过的路径可能是很不一样的。</p>
+<p>与数据报相对的是虚电路：在数据传输开始前，找到一条由A到B的传输路径，接着该连接的所有数据包都沿着这条路径前进。</p>
+<h2 id="路由表"><a href="#路由表" class="headerlink" title="路由表"></a>路由表</h2><p>路由器里都会有一个叫做“路由表”的东西，其中的每一项都至少记录着如下信息：</p>
+<ul>
+<li>目标IP地址</li>
+<li>子网掩码，下文会说</li>
+<li>下一跳IP地址</li>
+</ul>
+<p>所以呢，当主机A通过链路层给路由器发了一个以太网帧时，路由器首先会去检查帧的目的MAC地址，如果是路由器自己，那么就会开始处理：</p>
+<ul>
+<li>将以太网帧解封装，得到IP报文。</li>
+<li>在路由表中搜索IP报文中的目的IP地址，如果找到，就会得到下一跳地址，接着再通过<a href="#ARP">ARP协议</a>得到下一跳的MAC地址，最后将IP报文再次封装为以太网帧进行转发。</li>
+<li>如果没找到，将下一跳地址设置为默认路由，得到默认路由的MAC地址后同样封装为以太网帧进行转发。</li>
+</ul>
+<h2 id="ARP"><a href="#ARP" class="headerlink" title="ARP"></a><a name="ARP"/>ARP</h2><p>ARP(Address Resolution Protocol)，也就是地址解析协议，用来完成IP地址到MAC地址的映射。我们用下图所示的例子来讲解它的工作过程，这是由一个路由器相连的两个局域网：CS网络和EE网络。</p>
+<p><img src="/images/http-procedure/router.png" alt="router"></p>
+<p>假设CS网络的Host1想给CS网络Host2(<code>192.32.65.5</code>)发送数据，那么首先Host1发送一个广播包到网络上，包内容是“谁拥有<code>192.32.65.5</code>这个IP啊？”，然后Host1所在的局域网的所有主机(图中只画出了Host1与Host2)都收到了这个广播包，并且检查自己的IP地址。但是只有Host2会对此做出应答，应答内容就是自己的MAC地址。这样Host1就获得了Host2的MAC地址。</p>
+<h2 id="网关"><a href="#网关" class="headerlink" title="网关"></a>网关</h2><p>目前，我们解决了：在同一个子网内的主机之间互相传输数据包。那么，不同子网内的两台主机，又应该怎么进行通信呢？还是以上图为例子，不过现在CS网络的Host1想给EE网络Host4(<code>192.32.63.8</code>)发送数据。</p>
+<p>从图上容易看出Host1和Host2不在同一个子网内，但是机器是怎么知道的呢？这里就要引入子网掩码这个概念。</p>
+<h3 id="子网掩码"><a href="#子网掩码" class="headerlink" title="子网掩码"></a>子网掩码</h3><p>子网掩码是一系列形如<code>111111110000....000</code>(共32位4个字节，1只可能出现在高位)的数字，我们常见的子网掩码一般长这样<code>255.255.255.0</code>、<code>255.255.0.0</code>，这是将4个字节中的每个转为十进制再加上一个<code>.</code>而来的。它的作用就是与IP地址做“与”运算，得到的结果可以认为是某个子网的标识。比如上面的例子中子网掩码为<code>255.255.255.0</code>，把Host1、Host2的IP分别和它做与运算：<br><code>192.32.65.7 AND 255.255.255.0 = 192.32.65.0</code><br><code>192.32.65.5 AND 255.255.255.0 = 192.32.65.0</code><br>意味着Host1和Host2在同一个子网。但是，对于Host4：<br><code>192.32.63.8 AND 255.255.255.0 = 192.32.63.0</code><br>因此Host1和Host4不在一个子网里。</p>
+<p>现在，Host1明白Host4和它不在一个子网内，那就得通过<strong>网关</strong>来帮Host1做中间的桥梁。</p>
+<blockquote>
+<p>Quick Note<br>在<strong>传统</strong>TCP/IP术语中，网络设备只分成两种，一种为主机，另一只就是网关(gateway)。网关的作用是：如果目的地址在同一个子网内，发给对应的主机，如果不在，转给路由表中定义好的下一跳。</p>
+</blockquote>
+<p>与先前类似，Host1知道网关的IP地址<code>198.32.65.1</code>(一般网关拥有最低地址)，但不知道它的MAC地址，因此同样通过ARP请求来获取。接着Host1将IP包封装为以太网帧发送至网关，网关再将其发送到EE网络，接着再转发给Host4。</p>
+<h2 id="一个更复杂的例子"><a href="#一个更复杂的例子" class="headerlink" title="一个更复杂的例子"></a>一个更复杂的例子</h2><p>我们考虑这样一个情景：A是<code>北京</code><del>某排名第二的</del><code>大学</code>的大学生，他买了一个路由器，并且利用网线将路由器和寝室的网口相连，接上了宿舍区的校园网，接着他的电脑、手机都连上了这个路由器的WiFi。</p>
+<p>在这个过程中，路由器、电脑、手机构成了一个子网，且该子网通过路由器与校园网相连。他的路由器会分配到一个公网IP，就假设是<code>162.105.44.20</code>吧，同时路由器还会有一个内网IP，比如是<code>192.168.31.1</code>，这个IP同时也是A这个局域网的网关IP。另外由于路由器连接在校园网中，校园网也有一个它的网关IP，假设是<code>162.105.44.1</code>吧。然后A的两台设备各会分到一个内网IP，假设分别是<code>192.168.31.20</code>和<code>192.168.31.30</code>。</p>
+<p>这时候，如果电脑想给手机传数据，就类似于上面那个例子中Host1给Host2的情景。</p>
+<p>如果A想给楼里另一个同学B(<code>162.105.44.30</code>)传数据的话呢，他的电脑会把数据帧发给网关(<code>192.168.31.1</code>)，接着路由器再发给网关(<code>162.105.44.1</code>)，然后终于发到了B(<code>162.105.44.30</code>)。</p>
+<h3 id="NAT技术"><a href="#NAT技术" class="headerlink" title="NAT技术"></a>NAT技术</h3><p>你可能会问，A只有一个公网IP<code>162.105.44.20</code>，但是有两台设备，那为啥数据包不会乱套呢，毕竟服务器只用给<code>162.105.44.20</code>发数据就行了，路由器怎么知道应该转给手机还是电脑？这就是由NAT技术搞定的了。</p>
+<p>NAT技术的出现是因为IP地址不够用了，因此人们希望只用给每个家庭/公司一个(少量)IP地址，但仍然保证他们都可以接入互联网。在客户网络内部，每台主机具有唯一的IP地址——<strong>私有地址</strong>，比如<code>192.168.x.x</code>，<code>10.x.x.x</code>之类的。这个地址可以用来路由内部流量。但是，当数据包需要发向其他网络时，需要经过一个叫做NAT盒子的东西(路由器也实现了这个功能)。NAT盒子会修改IP包头部的源地址，修改后的值是公网IP。此外，NAT盒子还将修改TCP或UDP头中的源端口(一个16位的整数，下面会说)，修改后的值是另一个16位的整数，但它代表的不是端口号，而是一个索引值。也就是说NAT盒子内部维护了一个16位整数到IP地址+端口号的映射。这么做的原因是各个主机可能使用了同一个端口(比如80端口)，那么我们就需要类似于下表的一个映射表。</p>
+<table>
+<thead>
+<tr>
+<th align="center">索引值</br>(同时也是修改后的</br>TCP头部的源端口)</th>
+<th align="center">IP地址</th>
+<th align="center">端口号</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>12345</code></td>
+<td align="center"><code>192.168.1.20</code></td>
+<td align="center"><code>80</code></td>
+</tr>
+<tr>
+<td align="center"><code>23456</code></td>
+<td align="center"><code>192.168.1.30</code></td>
+<td align="center"><code>80</code></td>
+</tr>
+</tbody></table>
+<p><a name="anchor"><a/><br><strong>好了！TCP/IP的底层介绍完毕，终于到传输层和应用层了。</strong></p>
+<h1 id="传输层"><a href="#传输层" class="headerlink" title="传输层"></a><a name="Transport"/>传输层</h1><p>经过不懈的努力，我们理论上已经能使地球上任意两台主机互相发送数据了。用专业一点的说法是：我们已经能提供端到端的数据传输服务了。而传输层将数据传输服务从两台主机之间扩展到了两台主机的进程之间。在这一层，数据的单位称为“段”</p>
+<h2 id="端口"><a href="#端口" class="headerlink" title="端口"></a>端口</h2><p>刚刚说了，传输层提供的是进程之间的数据传输服务。但是，IP地址只有一个，进程却会有很多个，该如何实现这一目标呢？显然我们不会通过进程名来实现。“服务器要和<code>162.105.44.20</code>的<code>Google Chrome</code>建立连接”，这样既麻烦也不现实。真正的解决方案是使用端口。</p>
+<p>当某个进程想与另一个主机建立连接时，它不仅要指定对端的IP地址，还要指定对端的端口号(比如80端口)，并且告诉对端自己的IP地址和端口号。而对端主机则需要有一个进程监听对应的端口(80端口)。这样，当对端的进程收到连接请求时，就能获取到请求者的IP地址和端口号。换句话说，双方的两个进程通过两个端口号进行数据传输。</p>
+<h2 id="UDP"><a href="#UDP" class="headerlink" title="UDP"></a>UDP</h2><p>UDP协议非常简单，简单到基本上就是端口信息+数据，然后就转给了网络层形成IP包。它的头部长这样：</p>
+<p><img src="/images/http-procedure/UDP.png" alt="UDP"></p>
+<p>分别是：源端口、目的端口、UDP数据段的长度、UDP校验和。UDP协议是一种无连接协议，也不提供可靠传输服务，校验和的作用也仅仅是——如果校验和不正确就将该包丢弃而已。</p>
+<h2 id="TCP"><a href="#TCP" class="headerlink" title="TCP"></a>TCP</h2><p>UDP是如此简单以至于它提供的服务显得有点不靠谱……万一丢包了传输层甚至完全发现不了。而TCP协议解决了这一问题：提供面向连接的可靠传输服务。</p>
+<h3 id="TCP-header"><a href="#TCP-header" class="headerlink" title="TCP header"></a>TCP header</h3><p>它的头部长这样：</p>
+<p><img src="/images/http-procedure/TCP.png" alt="TCP"></p>
+<p>是不是复杂了很多……我们先来介绍一下各个字段的用处。以<code>A,B</code>互相发送为例。由于TCP是全双工协议，所以<code>A</code>和<code>B</code>有着各自的序号和确认号。</p>
+<ul>
+<li>源端口和目的端口：意义和UDP相同。</li>
+<li>序号和确认号：和数据链路层类似。在一次TCP连接中，可以多次发送数据，所以需要一个序号来充当该数据段在此次连接中的标识。确认号使用累计确认，则意味着某个数据段及其以前的数据段被接收方成功收到。但是，它的值为“下一个期望收到的数据段序号”。</li>
+<li>TCP头长度：因为TCP头的选项字段是变长的，所以TCP头也是变长的，所以需要标明TCP头长度，从而接收方能正确的将数据段分割为<code>TCP头|数据</code>。</li>
+<li>4个暂时没卵用的比特位。</li>
+<li>8个1比特的标志位：</li>
+<li><code>CWR</code>：<code>A(B)</code>将该位置为1意味着<code>A(B)</code>已经降低了发送速率。</li>
+<li><code>ECE</code>：当<code>A</code>希望<code>B</code>降低发送速率时，将该位置为1。</li>
+<li><code>URG</code>：如果使用了紧急指针，则置为1。</li>
+<li><code>ACK</code>：<code>ACK=1</code>意味着上面介绍的确认号字段有效。等于0则意味着无效。</li>
+<li><code>PSH</code>：<code>A(B)</code>的传输层可能不会一收到数据段就传给应用层，而是在攒了一些数据段后再传给应用层。而如果<code>PSH=1</code>则是<code>A(B)</code>请求<code>B(A)</code>的传输层一收到数据就传给应用程序。</li>
+<li><code>RST</code>：<code>RST</code>用来重置一个连接，也被用于拒绝连接。</li>
+<li><code>SYN</code>：<code>SYN</code>被用于建立连接的过程。</li>
+<li><code>FIN</code>：<code>A(B)</code>令<code>FIN=1</code>意味着<code>A(B)</code>已经没有数据要传输了。</li>
+<li>窗口大小：滑动窗口大小，该字段的值是可变的。<code>A(B)</code>将该字段置为某个非负数<code>X</code>意味着<code>A(B)</code>还能收<code>X</code>个字节的数据。</li>
+<li>校验和。</li>
+<li>紧急指针：紧急指针是一个正的偏移量，和序号字段中的值相加表示紧急数据最后一个字节的序号。一般很少用到。</li>
+<li>选项：选项域的长度必须为32位(4字节)的倍数，最长为40字节常用的选项有：</li>
+<li>最大段长：<code>A</code>和<code>B</code>可以互相告知自己能处理的最大段长，默认值为556字节。</li>
+<li>时间戳：如果在连接建立阶段使用了这个选项，那么之后的所有数据包都要包含这个选项。主要作用是用来计算来回所需的时间；还可以用来防止序号回绕。</li>
+<li>选择确认：<code>A(B)</code>可以告诉<code>B(A)</code>它已经收到的序号范围，从而<code>B(A)</code>可以知道应该重传哪些数据。</li>
+</ul>
+<p>接下来我们就来看看TCP是怎么工作的。</p>
+<h3 id="TCP建立连接"><a href="#TCP建立连接" class="headerlink" title="TCP建立连接"></a>TCP建立连接</h3><p>TCP使用三次握手来建立连接。</p>
+<ul>
+<li>首先服务端应当监听某个端口。</li>
+<li>第一次握手：客户端向该端口发送<code>[SYN] Seq=x</code>，即标志位中<code>SYN=1</code>(<code>ACK=0</code>)，且数据段序号为<code>x</code>。</li>
+<li>第二次握手：服务端如果接受这个请求，就发回一个<code>[SYN, ACK] Seq=y Ack=x+1</code>。<code>y</code>是服务端数据段的序号，且希望收到客户端序号为<code>x</code>的数据段。</li>
+<li>第三次握手：客户端发送<code>[ACK] Seq=x+1 Ack=y+1</code>。<code>x+1</code>即意味着是客户端的第2个数据段，<code>y+1</code>意味着客户端确认了<code>y</code>的收到，同时希望收到<code>y+1</code>数据段。</li>
+</ul>
+<h3 id="TCP释放连接"><a href="#TCP释放连接" class="headerlink" title="TCP释放连接"></a>TCP释放连接</h3><p>一般来说，释放连接需要4个TCP段：</p>
+<ul>
+<li>其中一端<code>A</code>发送<code>FIN</code>。</li>
+<li>对端<code>B</code>收到<code>FIN</code>后发送<code>ACK</code>。</li>
+<li><code>B</code>发送<code>FIN</code></li>
+<li><code>A</code>收到<code>FIN</code>后发送<code>ACK</code>，然后释放连接。</li>
+<li><code>B</code>收到<code>ACK</code>后释放连接。</li>
+</ul>
+<p>这也就是我们常说的4次挥手。不过<code>B</code>的<code>ACK</code>和<code>FIN</code>可能被一起发送，从而只需要发送3个TCP段。</p>
+<p>这里存在一个很重要的问题：万一丢包怎么办？</p>
+<ul>
+<li>比如<code>B</code>没收到<code>A</code>的<code>ACK</code>，那么<code>B</code>就无法释放连接。</li>
+<li>又比如<code>A</code>没收到<code>B</code>的<code>FIN</code>，那么<code>A</code>就无法释放连接，也无法发送<code>ACK</code>，导致<code>B</code>也无法释放连接。</li>
+</ul>
+<p>解决的方法是使用定时器，如果在一定时间内，没有对<code>FIN</code>的响应<code>ACK</code>，那么发出<code>FIN</code>的一方可以直接释放连接。另一方也会注意到似乎对面已经没人在监听连接了，所以也会超时。</p>
+<p><strong>各层介绍完毕，可以开始分析HTTP请求过程了。</strong></p>
+<p>先简单回顾一下例子：我们要访问的是<a href="www.example.com">www.example.com</a>。大致的过程为：</p>
+<ul>
+<li>域名解析：获得<a href="www.example.com">www.example.com</a>的IP地址。</li>
+<li>与该IP地址的80端口建立TCP连接。</li>
+<li>发送HTTP请求。</li>
+<li>得到服务端的响应。</li>
+<li>断开TCP连接。</li>
+</ul>
+<h1 id="域名解析"><a href="#域名解析" class="headerlink" title="域名解析"></a><a name="DNS"/>域名解析</h1><ul>
+<li>首先，浏览器会搜索自身的DNS缓存(缓存时间比较短，且条数较少)，如果搜到了<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>对应的条目，且没有过期，那么解析成功，该过程结束。</li>
+<li>浏览器表示没搜到，它接着会搜索操作系统的DNS缓存。同样，如果搜到且没有过期，解析成功。</li>
+<li>浏览器表示操作系统里也没有啊，它会去hosts文件里搜索，如果有，则解析成功。</li>
+<li>浏览器表示还是没找到……现在麻烦了，要向DNS服务器发请求了。DNS服务器地址就是我们机器上配置的“DNS服务器”(比如8.8.8.8什么的)。这是通过UDP请求来完成的。</li>
+<li>你的电脑问DNS服务器<code>A</code>：“喂，<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>的IP地址是多少？”如果<code>A</code>知道，那么就返回结果，过程结束。</li>
+<li>如果<code>A</code>不知道，那么，它会帮你问更高一级的DNS服务器<code>B</code>。同样，如果<code>B</code>知道，它就将结果返回给<code>A</code>，然后<code>A</code>再把结果告诉给你的电脑，过程结束。</li>
+<li>如果<code>B</code>也不知道，它会和<code>A</code>说：“啊，我不知道，但是我知道<code>.com</code>是<code>C</code>负责的，它应该知道，我把它的IP地址告诉你，你去问它好了”。</li>
+<li>这下<code>A</code>又会去问<code>C</code>。如此这般，一直问到某个服务器返回了结果为止。</li>
+<li>总的来说，这个过程就是：你的电脑拜托<code>A</code>找到<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>的IP地址，而<code>A</code>则会尽心尽力的帮你问，直到找到答案为止。</li>
+<li>最后我们终于得到了<a target="_blank" rel="noopener" href="http://www.example.com/">www.example.com</a>的ip地址<a href="93.184.216.34">93.184.216.34</a></li>
+</ul>
+<h1 id="TCP连接"><a href="#TCP连接" class="headerlink" title="TCP连接"></a><a name="TCP_connect"/>TCP连接</h1><p>得到域名对应的IP地址后，浏览器会随机开启一个端口(1024&lt;port&lt;65535)向服务器的80端口发起TCP连接请求，图中为57320端口。如前所述，客户端首先发送<code>[SYN] Seq=0</code>，服务端返回<code>[SYN, ACK] Seq=0 Ack=1</code>，客户端又发送<code>[ACK] Seq=1 Ack=1</code>。三次握手完成。</p>
+<p><img src="/images/http-procedure/http_request.png" alt="http"></p>
+<p>整个过程抓包如上图。</p>
+<h1 id="HTTP请求与响应"><a href="#HTTP请求与响应" class="headerlink" title="HTTP请求与响应"></a><a name="HTTP"/>HTTP请求与响应</h1><p>建立了TCP连接之后，浏览器发起HTTP Request，使用的是<code>GET</code>方法。服务端返回一个<code>ACK</code>后开始真正的数据传输。服务端应用层将一个HTML文档传给传输层，由于这个HTML文档有点长，传输层将其分为两段<code>22751</code>与<code>22752</code>，传输层收到了两个段之后再一起传给应用层，因此对于应用层来说相当于只收到了一个HTTP响应。客户端收到响应后发送了一个<code>ACK</code>。</p>
+<h1 id="TCP关闭连接"><a href="#TCP关闭连接" class="headerlink" title="TCP关闭连接"></a><a name="TCP_close"/>TCP关闭连接</h1><p>客户端发送<code>[FIN, ACK] Seq=144 Ack=1615</code>说自己要断开连接了，服务器响应这个<code>FIN</code>，发回一个<code>[FIN ACK] Seq=1615 Ack=145</code>。客户端收到后最后发送一次<code>ACK</code>，<code>[ACK] Seq=145 Ack=1616</code>。</p>
+<hr>
+<h1 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h1><h2 id="路由器和网关有什么区别和联系？"><a href="#路由器和网关有什么区别和联系？" class="headerlink" title="路由器和网关有什么区别和联系？"></a>路由器和网关有什么区别和联系？</h2><ul>
+<li>之前说过，在传统的TCP/IP术语中，除了主机以外的设备都是网关。也就是说，在当时，网关与路由器还没有区别。</li>
+<li>在现代网络术语中，网关能在不同协议间移动数据，而路由器是在不同网络间移动数据。</li>
+<li>现在，路由器一般都实现了网关的功能。</li>
+</ul>
+<h2 id="为什么以太网帧有最小长度要求？"><a href="#为什么以太网帧有最小长度要求？" class="headerlink" title="为什么以太网帧有最小长度要求？"></a><a name="min_len"/>为什么以太网帧有最小长度要求？</h2><p>这其实是一个历史遗留问题。如前所述，经典以太网的使用总线拓扑，多台机器接入同一条线缆，因此存在冲突。那么我们考虑这样一种情况：一个非常短的帧由A发往B，然而很不幸的是，就在帧要到达B时，B也发送了一个帧，并且很快B发现产生了冲突，然后发出了一个48位的突发噪声来警告别的机器。然而，在这个冲突警告到达A前，A早已完成了数据帧的传输。又由于以太网不采用确认机制，所以A认为传输成功，然而实际上是失败的。为了避免这种情况的发生，我们应该使数据帧足够长，使得在警告信号到达时，数据帧仍未发送完毕。结合一些以太网物理参数，可以算出这个最小长度为64字节。</p>
+<h2 id="以太网不使用确认机制，万一传输过程中发生了错误怎么办？"><a href="#以太网不使用确认机制，万一传输过程中发生了错误怎么办？" class="headerlink" title="以太网不使用确认机制，万一传输过程中发生了错误怎么办？"></a><a name="ethernet_error"/>以太网不使用确认机制，万一传输过程中发生了错误怎么办？</h2><p>前面说到，如果确实发生了传输错误，高层需要负责处理，而这就取决于具体是什么协议。对于UDP，发送方不知道、也不需要知道传输错误的发生。对于TCP，则是通过传输层的超时机制来完成的。由于发送方的数据链路层计算校验和后检测到错误，将其丢弃，因此网络层收不到该分组，因此传输层收不到该分组所在的数据段，也就没法给发送方发送ACK。导致发送方计时器超时，进而重新发送该数据段。</p>
+<p>不过这就导致了一个问题……假设传输层的数据段比较长(大于1500字节)被网络层分成了k组，那么其中任何1组出现丢包/校验和错误等情况，对端的传输层都将收不到该数据段。发送方需要重传整个数据段，这个代价是比较大的。因此，TCP会极力避免自己的数据段在网络层被分组。也就是说，TCP会先将自己的数据分为k个数据段，而这k个数据段由于没有超过1500字节，因此在传输层会被包装为k个数据包。这样一来，其中1组(同时也是1段)出现丢包/出错的情况，也只用重传这一组就行了。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" rel="tag"># 计算机网络</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2016/02/14/build-blog-with-Github-Pages-and-Hexo/" rel="prev" title="利用Github Pages和Hexo搭建静态博客">
+      <i class="fa fa-chevron-left"></i> 利用Github Pages和Hexo搭建静态博客
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/10/06/matrixkv/" rel="next" title="MatrixKV: Reducing Write Stalls and Write Amplification in LSM-tree Based KV Stores with a Matrix Container in NVM">
+      MatrixKV: Reducing Write Stalls and Write Amplification in LSM-tree Based KV Stores with a Matrix Container in NVM <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP-IP%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">TCP&#x2F;IP简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">2.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%89%A9%E7%90%86%E5%B1%82"><span class="nav-number">3.</span> <span class="nav-text">物理层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E9%80%9A%E4%BF%A1%E5%8E%9F%E7%90%86"><span class="nav-number">3.1.</span> <span class="nav-text">数据通信原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E5%AD%97%E8%B0%83%E5%88%B6"><span class="nav-number">3.2.</span> <span class="nav-text">数字调制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E5%B8%A6%E4%BC%A0%E8%BE%93"><span class="nav-number">3.2.1.</span> <span class="nav-text">基带传输</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%9A%E5%B8%A6%E4%BC%A0%E8%BE%93"><span class="nav-number">3.2.2.</span> <span class="nav-text">通带传输</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E9%93%BE%E8%B7%AF%E5%B1%82"><span class="nav-number">4.</span> <span class="nav-text">数据链路层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%84%E9%80%A0%E6%95%B0%E6%8D%AE%E5%B8%A7"><span class="nav-number">4.1.</span> <span class="nav-text">构造数据帧</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B7%AE%E9%94%99%E6%8E%A7%E5%88%B6"><span class="nav-number">4.2.</span> <span class="nav-text">差错控制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E5%8D%8F%E8%AE%AE"><span class="nav-number">4.3.</span> <span class="nav-text">滑动窗口协议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%95%E5%B7%A5%E3%80%81%E5%8D%8A%E5%8F%8C%E5%B7%A5%E4%B8%8E%E5%85%A8%E5%8F%8C%E5%B7%A5"><span class="nav-number">4.4.</span> <span class="nav-text">单工、半双工与全双工</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%8B%E8%B4%A8%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E5%AD%90%E5%B1%82"><span class="nav-number">5.</span> <span class="nav-text">介质访问控制子层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91"><span class="nav-number">5.1.</span> <span class="nav-text">以太网</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E7%BA%BF%E5%B1%80%E5%9F%9F%E7%BD%91"><span class="nav-number">5.2.</span> <span class="nav-text">无线局域网</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#801-11b"><span class="nav-number">5.2.1.</span> <span class="nav-text">801.11b</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#801-11a"><span class="nav-number">5.2.2.</span> <span class="nav-text">801.11a</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#801-11g"><span class="nav-number">5.2.3.</span> <span class="nav-text">801.11g</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E5%B1%82"><span class="nav-number">6.</span> <span class="nav-text">网络层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8A%A5"><span class="nav-number">6.1.</span> <span class="nav-text">数据报</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B7%AF%E7%94%B1%E8%A1%A8"><span class="nav-number">6.2.</span> <span class="nav-text">路由表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ARP"><span class="nav-number">6.3.</span> <span class="nav-text">ARP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E5%85%B3"><span class="nav-number">6.4.</span> <span class="nav-text">网关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%90%E7%BD%91%E6%8E%A9%E7%A0%81"><span class="nav-number">6.4.1.</span> <span class="nav-text">子网掩码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E6%9B%B4%E5%A4%8D%E6%9D%82%E7%9A%84%E4%BE%8B%E5%AD%90"><span class="nav-number">6.5.</span> <span class="nav-text">一个更复杂的例子</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#NAT%E6%8A%80%E6%9C%AF"><span class="nav-number">6.5.1.</span> <span class="nav-text">NAT技术</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BC%A0%E8%BE%93%E5%B1%82"><span class="nav-number">7.</span> <span class="nav-text">传输层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AB%AF%E5%8F%A3"><span class="nav-number">7.1.</span> <span class="nav-text">端口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#UDP"><span class="nav-number">7.2.</span> <span class="nav-text">UDP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP"><span class="nav-number">7.3.</span> <span class="nav-text">TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP-header"><span class="nav-number">7.3.1.</span> <span class="nav-text">TCP header</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E5%BB%BA%E7%AB%8B%E8%BF%9E%E6%8E%A5"><span class="nav-number">7.3.2.</span> <span class="nav-text">TCP建立连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E9%87%8A%E6%94%BE%E8%BF%9E%E6%8E%A5"><span class="nav-number">7.3.3.</span> <span class="nav-text">TCP释放连接</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%9F%E5%90%8D%E8%A7%A3%E6%9E%90"><span class="nav-number">8.</span> <span class="nav-text">域名解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP%E8%BF%9E%E6%8E%A5"><span class="nav-number">9.</span> <span class="nav-text">TCP连接</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HTTP%E8%AF%B7%E6%B1%82%E4%B8%8E%E5%93%8D%E5%BA%94"><span class="nav-number">10.</span> <span class="nav-text">HTTP请求与响应</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP%E5%85%B3%E9%97%AD%E8%BF%9E%E6%8E%A5"><span class="nav-number">11.</span> <span class="nav-text">TCP关闭连接</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">12.</span> <span class="nav-text">一些问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B7%AF%E7%94%B1%E5%99%A8%E5%92%8C%E7%BD%91%E5%85%B3%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%E5%92%8C%E8%81%94%E7%B3%BB%EF%BC%9F"><span class="nav-number">12.1.</span> <span class="nav-text">路由器和网关有什么区别和联系？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BB%A5%E5%A4%AA%E7%BD%91%E5%B8%A7%E6%9C%89%E6%9C%80%E5%B0%8F%E9%95%BF%E5%BA%A6%E8%A6%81%E6%B1%82%EF%BC%9F"><span class="nav-number">12.2.</span> <span class="nav-text">为什么以太网帧有最小长度要求？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91%E4%B8%8D%E4%BD%BF%E7%94%A8%E7%A1%AE%E8%AE%A4%E6%9C%BA%E5%88%B6%EF%BC%8C%E4%B8%87%E4%B8%80%E4%BC%A0%E8%BE%93%E8%BF%87%E7%A8%8B%E4%B8%AD%E5%8F%91%E7%94%9F%E4%BA%86%E9%94%99%E8%AF%AF%E6%80%8E%E4%B9%88%E5%8A%9E%EF%BC%9F"><span class="nav-number">12.3.</span> <span class="nav-text">以太网不使用确认机制，万一传输过程中发生了错误怎么办？</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Yriuns</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Yriuns</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : '117937fd5d0fa0f067c8',
+      clientSecret: 'f405a61a81d7d16364eb79f2351f1a72f49db3b4',
+      repo        : 'gitalk',
+      owner       : 'Yriuns',
+      admin       : ['Yriuns'],
+      id          : 'c19af75f7fe501b5dfe28facd48781bd',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

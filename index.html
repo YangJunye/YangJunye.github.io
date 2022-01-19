@@ -156,6 +156,80 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://yriuns.github.io/2022/01/08/braft-in-action/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Yriuns">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Yriuns' Blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/01/08/braft-in-action/" class="post-title-link" itemprop="url">braft/\*非官方\*/实践指南</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-01-08 19:40:23" itemprop="dateCreated datePublished" datetime="2022-01-08T19:40:23+08:00">2022-01-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-01-19 19:46:29" itemprop="dateModified" datetime="2022-01-19T19:46:29+08:00">2022-01-19</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>据说，OceanBase的CTO杨传辉曾经说过：“构建一个分布式数据库存储系统是比较简单的，上层一套raft一致性协议，下层接一个RocksDB引擎，一周时间就能搞定，难得是如何保证系统在后续的运行中性能稳定且可靠”。且不论一周时间到底够不够，不可否认的是，Raft协议的出现使得构建一个分布式系统简单了许多。</p>
+<p>但即使Raft作者把各种工程问题解决之道都写在了他的博士论文里，真正去实现一个高效稳定的Raft库仍然要费很多心思。此外，库的使用者也必然会遇到各种意想不到的问题。</p>
+<p>由于工作的关系，笔者深度使用了braft一段时间。总体来说braft是一个完成度很高的工业级实现，省去了团队不少开发及测试的时间。但是当然也遇到了不少坑。因此本文将分享一些笔者在使用/魔改braft的一些小经验，希望能让你少踩点坑。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/01/08/braft-in-action/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://yriuns.github.io/2020/10/06/matrixkv/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -469,7 +543,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-count">4</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -482,7 +556,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -514,7 +588,7 @@
 <div class="copyright">
   
   &copy; 
-  <span itemprop="copyrightYear">2021</span>
+  <span itemprop="copyrightYear">2022</span>
   <span class="with-love">
     <i class="fa fa-bug"></i>
   </span>
